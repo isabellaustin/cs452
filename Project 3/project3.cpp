@@ -1,5 +1,5 @@
 //CS452 Project 3: Clone Wars
-//Written by Anna Vadella, Noah Baker, Isabell Austin
+//Written by Anna Vadella
 
 //Compile: mpicxx -o blah project3.cpp
 //Run: mpirun -np 4 blah
@@ -14,12 +14,10 @@ using namespace std;
 
 //Project Function Declarations
 void smergesort(int *, int, int, int *);
-void smerge(int *, int *, int, int, int *);
-
 void pmergesort(int *, int, int, int *);
-void pmerge(int *, int *, int, int, int *);
-
+void smerge(int *, int *, int, int, int *);
 int Rank(int *, int, int, int);
+void pmerge(int *, int *, int, int, int *);
 
 //Helper Function Declarations
 void printArray(int *, int);
@@ -31,7 +29,15 @@ int p; 									//Number of CPUs that we have
 int * output; 							//Output array
 
 //Recursive function
-void smergesort(int * a, int first, int last, int * output = NULL) {
+
+void testUnsortedArrayBroadcast(int my_rank, int input[], int n){
+    cout << "Process " << my_rank + 1 << " recieved array: " << endl;
+    printArray(input,n);
+    cout << endl;
+}
+
+void smergesort(int * a, int first, int last, int * output = NULL)
+{
 	if (last - first < 1)
         return;
 
@@ -46,7 +52,8 @@ void smergesort(int * a, int first, int last, int * output = NULL) {
 }
 
 //Sequential merge function
-void smerge(int * a, int * b, int lasta, int lastb, int * output = NULL) {
+void smerge(int * a, int * b, int lasta, int lastb, int * output = NULL)
+{
 	int i = 0;
     int j = 0;
     int k = 0;
@@ -66,7 +73,8 @@ void smerge(int * a, int * b, int lasta, int lastb, int * output = NULL) {
 
 //Rank = "how many elements are smaller than me"
 //Return value = number of items that are less than the value valToFind
-int Rank(int * a, int first, int last, int valToFind) {
+int Rank(int * a, int first, int last, int valToFind)
+{
 	//First and last variables indicate the range of the array you're working on
 	//Base Case
 	if(first == last) {
@@ -89,7 +97,8 @@ int Rank(int * a, int first, int last, int valToFind) {
 }
 
 //Parallel merge function
-void pmerge(int * a, int * b, int lasta, int lastb, int * output = NULL) {
+void pmerge(int * a, int * b, int lasta, int lastb, int * output = NULL)
+{
 	//Phase 1: Calculate SRANKA and SRANKB by striping the work of computing ranks among all processors
 
 	//Phase 2: Share all the SRANKA and SRANKB so all processors have the same answers
@@ -105,7 +114,8 @@ void pmerge(int * a, int * b, int lasta, int lastb, int * output = NULL) {
 }
 
 //Helper function to print array
-void printArray(int * a, int size) {
+void printArray(int * a, int size)
+{
 	for(int i = 0; i < size; i++) {
 		cout << a[i] << " ";
 	}
@@ -113,7 +123,8 @@ void printArray(int * a, int size) {
 }
 
 //Helper function to check if array entries are unique or not (avoiding duplicates)
-bool isUnique(int * a, int b, int entry) {
+bool isUnique(int * a, int b, int entry)
+{
 	for(int i = 0; i < b; i++)
 		if(a[i] == entry)					//Entry already exists, not unique
 			return false;
@@ -174,6 +185,7 @@ int main (int argc, char * argv[]) {
 		cout << "Sorted Array: " << endl;
 		printArray(userArray, arraySize);
 	}
+
 
 	//Deleting dynamically allocated arrays
 	delete [] userArray;

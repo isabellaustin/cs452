@@ -125,7 +125,7 @@ void pmerge(int * a, int * b, int lasta, int lastb, int * output = NULL)
 	int localStart = my_rank;
 	int segmentSize = (lastb - a[0] + 1)/2; 						//should in theory be doing (last - first + 1)/2
 	int logSegmentSize = log2(segmentSize);
-	int localSize = ceil(((double)segSize/(double)logSegSize));		//ceil() function: returns smallest possible int value which is greater than or equal to given argument 
+	int localSize = ceil(((double)segmentSize/(double)logSegmentSize));		//ceil() function: returns smallest possible int value which is greater than or equal to given argument 
 	
 	//Tester print statement to test localSize 
 	cout << "This is the value of localSize " << localSize << endl;
@@ -140,6 +140,7 @@ void pmerge(int * a, int * b, int lasta, int lastb, int * output = NULL)
 	
 	//Striping process happens here
 	//Might need to modify this potentially, not using array b whatsoever currently 
+	int first = 0; //	WILL PROBABLY NEED TO CHANGE; &a[first] + shapesA[i]
 	striping(srankA, a, lasta + 1, lastb, first, localStart, localSize, logSegmentSize);
 	striping(srankB, a, first, lasta, lasta + 1, localStart, localSize, logSegmentSize);
 	
@@ -179,15 +180,17 @@ void pmerge(int * a, int * b, int lasta, int lastb, int * output = NULL)
 	shapesB[2 * localSize + 1] = (lastb - a[0] + 1)/2; 
 	
 	//Use smerge to sort ranks 
-	smerge(shapesA, 0, localSize - 1, localSize, 2 * localSize);
-	smerge(shapesB, 0, localSize - 1, localSize, 2 * localSize);
+	smerge(shapesA, 0, localSize - 1, localSize, shapesA); // 2 * localSize param needs to be an array param instead
+	smerge(shapesB, 0, localSize - 1, localSize, shapesB);
 	
 	//Use smerge to determine a "shape" - Definitely need to revise/test this like a lot 
 	for(int i = localStart; i < (2 * localSize); i += p) 
-		smerge(a, &a[first] + subproblemA[i], &a[first] + subproblemA[i + 1] - 1, (lasta + 1) + subproblemB[i], (lasta + 1) + subproblemB[i + 1] - 1, localWin, lasta + 1, lastb);
+		// smerge(a, &a[first] + subproblemA[i], &a[first] + subproblemA[i + 1] - 1, (lasta + 1) + subproblemB[i], (lasta + 1) + subproblemB[i + 1] - 1, localWin, lasta + 1, lastb);4
+			//subproblem = shapes
+		smerge(a, 0, a[first] + shapesA[i + 1] - 1, (lasta + 1) + shapesB[i + 1] - 1, localWIN);
 	
 	//Phase 6: Each process puts their smerged shapes in the right place, share all shapes among everyone 
-	MPI_Allreduce(&localWin[0], &win[0], size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(&localWIN[0], &WIN[0], size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 	
 	//Copy the values from the WIN array to the output array - Can use a helper function or do the below???
 	 for (int i = 0; i < size; i++) {

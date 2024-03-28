@@ -96,12 +96,13 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
     //Phase 1: Calculate SRANKA and SRANKB by striping the work of computing ranks among all processors
 	//Calculating SRANK array size and segment sizes 
 
+    cout << "Lastb " <<lastb << endl;
 
 	//we need to have base case if size is 1 or 0 or the log or partition is 0	
 	int local_start = my_rank; 
-	int logHalf = log2((lasta + lastb + 1)/2); //log half for index just A/B
-    int logn = log2(lasta+lastb+1); //log n for index of entire array
-    int partition = ceil((double)(lastb + 1) / (logn)); //n over log n for the size of arrays
+	int logHalf = log2((lastb/2)); //log half for index just A/B
+    int logn = log2(lastb); //log n for index of entire array
+    int partition = ceil((double)(lastb)/(logn)); //n over log n for the size of arrays
 
 	//cout << "Partition: " << partition << endl;
 
@@ -114,11 +115,11 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 	//Phase 3: Make sure the answers from phase 2 are correct, test throughly!*/
 	
 	//THIS IS WHERE ENDPOINT STUFF IS HAPPENING
-	int size = lasta + lastb + 1; 
+	int size = lastb; 
 	int * WIN = new int[size];
 	int * localWIN = new int[size];
 	
-	int * endpointsA = new int[(partition)]; // logn + 1
+	int * endpointsA = new int[(partition)];
     int * endpointsB = new int[(partition)];
 	int * localendpointsA = new int[(partition)];
 	int * localendpointsB = new int[(partition)];
@@ -135,12 +136,11 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 	
 	for (int i = my_rank; i < partition; i += p) {
         int first = 0;    // first will always be 0
-        //int last = (lasta + lastb + 1)/2;  ask if this is necesarry or if use lasta/b
-        localendpointsA[i] = Rank(b, first, lasta, a[i * logHalf]); //SRANKA
-        localendpointsA[i + partition] = i * logHalf;
-        localendpointsB[i] = Rank(a, first, lastb, b[i * logHalf]); //SRANKB
-        localendpointsB[i + partition] = i * logHalf;
-        cout << my_rank << " endpoint calculation" << endl; 
+        localendpointsA[i] = Rank(b, first, lastb, a[i * logHalf]); //SRANKA
+        localendpointsA[i + partition/2] = i * logHalf;
+        localendpointsB[i] = Rank(a, first, lasta, b[i * logHalf]); //SRANKB
+        localendpointsB[i + partition/2] = i * logHalf;
+        cout << my_rank << " endpoint calculation" << endl;  
     }
 	
 	//MPI_AllReduce(void* send_data, void* recv_data, int count, MPI_Datatype datatype, MPI_Op op, MPI_Comm communicator)
@@ -149,7 +149,7 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 
     MPI_Allreduce(localendpointsB, endpointsB, partition, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
 
-    MPI_Allreduce(localWIN, WIN, size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);   
+    //MPI_Allreduce(localWIN, WIN, size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);   
     
 	cout << my_rank << " Reduce complete." << endl;	
 
@@ -167,6 +167,7 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         printArray(endpointsB, partition);
         cout << endl;
     }
+
    // if (my_rank==0) {
    //     cout << "SRANK + ENDPOINTS: " << endl;
    // }
@@ -271,8 +272,8 @@ int main(int argc, char *argv[]) {
 
     MPI_Bcast(&arraySize, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    int *userArray = new int[arraySize];
-    int *outputArray = new int[arraySize];
+    int * userArray = new int[arraySize];
+    int * outputArray = new int[arraySize];
 
     if (my_rank == 0) {
         srand(1121);
@@ -289,6 +290,8 @@ int main(int argc, char *argv[]) {
         cout << "Sorted Array" << endl;
         printArray(userArray, arraySize);
     }
+
+// GEORGE WAS HERE
 
     MPI_Bcast(userArray, arraySize, MPI_INT, 0, MPI_COMM_WORLD);
     pmerge(&userArray[0], &userArray[arraySize/2 + 1], arraySize/2, arraySize-1, outputArray); //may make lastb arraySize-1

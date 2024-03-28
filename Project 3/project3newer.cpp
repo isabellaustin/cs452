@@ -1,3 +1,9 @@
+//CS452 Project 3: Clone Wars
+//Written by Anna Vadella, Noah Baker, Izzy Austin
+
+//Compile: mpicxx -o blah project3.cpp
+//Run: mpirun -np 4 blah
+
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -5,6 +11,7 @@
 #include <string.h>
 #include <math.h>
 #include "mpi.h"
+
 using namespace std;
 
 // Project Function Declarations
@@ -23,16 +30,13 @@ int my_rank;
 int p;
 int *output;
 
-
 void smergesort(int *a, int first, int last, int *output = NULL) {
     if (last - first < 1)
         return;
 
     int middle = (first + last) / 2;
-
     smergesort(a, first, middle, output);
     smergesort(a, middle + 1, last, output);
-
     smerge(&a[first], &a[middle + 1], middle - first, last - (middle + 1), &output[first]);
 
     for (int i = first; i <= last; i++)
@@ -41,21 +45,15 @@ void smergesort(int *a, int first, int last, int *output = NULL) {
 
 void pmergesort(int *a, int first, int last, int *output = NULL) {
     if (last - first <= 32 )
-    {
         return;
-    }
-
-    else if(last - first < 1)
-    {
+    else if(last - first < 1){
         return;
         //pmerge(&a[first], &a[(last+1)/2], (last + 1)/2, last, &output[first]);
     }
 
     int middle = (first + last) / 2;
-
     pmergesort(a, first, middle, output);
     pmergesort(a, middle + 1, last, output);
-
     pmerge(&a[first], &a[middle + 1], middle - first, last - (middle + 1), &output[first]);
 
     for (int i = first; i <= last; i++)
@@ -75,7 +73,6 @@ int Rank(int *a, int first, int last, int valToFind) {
     }
 
     int middle = (first + last) / 2;
-
     if (valToFind < a[middle + 1])
         return Rank(&a[first], first, middle, valToFind);
     else
@@ -101,10 +98,8 @@ void smerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 }
 
 void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
-    //Phase 1: Calculate SRANKA and SRANKB by striping the work of computing ranks among all processors
-	//Calculating SRANK array size and segment sizes 
+    //Phase 1: Calculate SRANKA and SRANKB by striping the work of computing ranks among all processors 
 
-	//we need to have base case if size is 1 or 0 or the log or partition is 0	
     //partition should be 11 for 64
 	int local_start = my_rank; 
     int size = lasta+lastb+1;
@@ -126,14 +121,14 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 	
 	int * endpointsA = new int[(partition * 2)];
     int * endpointsB = new int[(partition * 2)];
-	int * localendpointsA = new int[(partition * 2)];
-	int * localendpointsB = new int[(partition * 2)];
+	int * srankA = new int[(partition * 2)];
+	int * srankB = new int[(partition * 2)];
 	
 	for(int i = 0; i < partition; i++)
 	{   
         //SRANK a and B change this
-        localendpointsA[i] = 0;
-        localendpointsB[i] = 0;
+        srankA[i] = 0;
+        srankB[i] = 0;
 		endpointsA[i] = 0;
 		endpointsB[i] = 0;
         WIN[i] = 0;
@@ -141,20 +136,18 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 	}
     
     for (int i = my_rank; i < partition; i += p) {
-        localendpointsB[i] = Rank(a, 0, lasta, b[i * logn]); //SRANKB
-        localendpointsA[i] = Rank(b, 0, lastb, a[i * logn]); //SRANKA
+        srankB[i] = Rank(a, 0, lasta, b[i * logn]); //SRANKB
+        srankA[i] = Rank(b, 0, lastb, a[i * logn]); //SRANKA
     }
 
 
-    MPI_Allreduce(localendpointsA, endpointsA, partition, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
-    MPI_Allreduce(localendpointsB, endpointsB, partition, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
+    MPI_Allreduce(srankA, endpointsA, partition, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
+    MPI_Allreduce(srankB, endpointsB, partition, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
     //MPI_Allreduce(localWIN, WIN, size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);   
-
-    //MPI_AllReduce(void* send_data, void* recv_data, int count, MPI_Datatype datatype, MPI_Op op, MPI_Comm communicator)
 
     cout << my_rank << " Reduce complete." << endl;	
 
-    //this in the 64 example should be 0,6,12,18,24...
+    //this in the 64 example, endpoints should be 0,6,12,18,24...
     //Gupta says to use smaller example, change base case to reflect this, debug 
 	for (int i = 0; i < partition; i++) {
         endpointsA[i + partition] = i * logn;
@@ -162,16 +155,9 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
     }
     cout << my_rank << " endpoint calculation" << endl; 
  
-
-    /* I am not sure about the first 6 endpoints (0-5) but locally as seen in the for loops below, the other numbers should
-       be 0,6,12,18,24,30 but due to allReduce its becoming something so much bigger and im not sure why
-    */
-
     // I could be wrong but I dont think this is neccesarry
     // endpointsA[partition] = size/2;
     // endpointsB[partition ] = size/2; 
-
-    //cout << "This is a partition: " << partition << endl;
 
     //test the endpoints
     if(my_rank == 0) {
@@ -182,13 +168,7 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         cout << endl;
     }
 
-   // if (my_rank==0) {
-   //     cout << "SRANK + ENDPOINTS: " << endl;
-   // }
-   // testEndpoints(my_rank, endpointsA, endpointsB, srankSize);
-
     //endpoints must be sorted to define the shapes
-
     smerge(&endpointsA[0], &endpointsA[logn], logn-1, partition-1, localWIN);
     smerge(&endpointsB[0], &endpointsB[logn], logn-1, partition-1, localWIN);
 
@@ -200,27 +180,12 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         cout << endl;
     }
 
-
     //collect all shapes into the win array
     MPI_Allreduce(localWIN, WIN, size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
     for (int i = 0; i < size; i++) {
         output[i] = WIN[i];
     }
-	
-	/*Use smerge to determine a "shape" - Definitely need to revise/test this like a lot 
-	for(int i = local_start; i < (2 * partition); i += p) 
-		// smerge(a, &a[first] + subproblemA[i], &a[first] + subproblemA[i + 1] - 1, (lasta + 1) + subproblemB[i], (lasta + 1) + subproblemB[i + 1] - 1, localWin, lasta + 1, lastb);4
-			//subproblem = shapes
-		//smerge(shapesA, shapesB, a[first] + shapesA[i + 1] - 1, (lasta + 1) + shapesB[i + 1] - 1, localWIN);
-	
-	//Phase 6: Each process puts their smerged shapes in the right place, share all shapes among everyone 
-	MPI_Allreduce(&localWIN[0], &WIN[0], size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-
-	//Copy the values from the WIN array to the output array - Can use a helper function or do the below???
-	 for (int i = 0; i < size; i++) {
-        output[i] = WIN[i];
-    }*/
 	
 	//Testing out whether the output array has the correct values or not
 	if(my_rank == 0) {
@@ -229,20 +194,18 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 		cout << endl;
 	} 
 
-	
 	//Deleting dynamically allocated arrays	
 	delete [] WIN;
 	delete [] localWIN;
     delete [] endpointsA;
     delete [] endpointsB;
-    delete [] localendpointsA;
-    delete [] localendpointsB;
+    delete [] srankA;
+    delete [] srankB;
 }
 
 void printArray(int *a, int size) {
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
         cout << a[i] << " ";
-    }
     cout << endl;
 }
 
@@ -250,7 +213,6 @@ bool isUnique(int *a, int b, int entry) {
     for (int i = 0; i < b; i++)
         if (a[i] == entry)
             return false;
-
     a[b] = entry;
     return true;
 }
@@ -294,7 +256,6 @@ int main(int argc, char *argv[]) {
         cout << "Sorted Array 1st Half and second half" << endl;
         printArray(userArray, arraySize);
     }
-
 
     MPI_Bcast(userArray, arraySize, MPI_INT, 0, MPI_COMM_WORLD);
     pmergesort(userArray, 0, arraySize - 1, outputArray);

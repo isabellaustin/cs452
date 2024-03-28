@@ -182,13 +182,15 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         printArray(shapes, shapearraySize);
     }
 
+    //this is the smerge where every processor does it and it works but we obvi want this to have striping
     smerge(&shapes[0], &shapes[partition*2], (partition*2)-1, shapearraySize-1, &WIN[0]);
 
-    /*for(int = my_rank; i < shapearraySize; i+=p)
+    //this is like the most rough draft of striping smerging so dont laugh but this is an idea
+    /*for(int i = my_rank; i < shapearraySize; i+=p) //4 processors
     {
         //cant tell of this should be partition or logn
         //how to generalize where things will end
-        smerge(&shapes[i], &shapes[i * (partition * 2)], (partition * 2) - 1, shapearraySize -1, &WIN[0])
+        smerge(&shapes[i], &shapes[i + (partition * 2)], logn, i + (partition * 2) + logn, &WIN[0]);
     }*/
 
 	MPI_Allreduce(WIN, output, shapearraySize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);

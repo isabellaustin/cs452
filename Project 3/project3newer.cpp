@@ -128,7 +128,7 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 	//Phase 3: Make sure the answers from phase 2 are correct, test throughly!*/
 	
 	//THIS IS WHERE ENDPOINT STUFF IS HAPPENING
-	int * finalShapes = new int[totarraySize];
+	int * WIN = new int[totarraySize];
 	int * shapes = new int[totarraySize]; 
 	int * endpointsA = new int[(partition * 2)];
     int * endpointsB = new int[(partition * 2)];
@@ -137,16 +137,14 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 	
 	for(int i = 0; i < partition; i++)
 	{   
-        //SRANK a and B change this
         srankA[i] = 0;
         srankB[i] = 0;
 		endpointsA[i] = 0;
 		endpointsB[i] = 0;
         shapes[i] = 0;
-        finalShapes[i] = 0;
+        WIN[i] = 0;
 	}
     
-    //one off when you check right side
     for (int i = my_rank; i < partition; i += p) {
         srankA[i] = Rank(b, 0, lastb, a[i * logn]); //SRANKB
         srankB[i] = Rank(a, 0, lasta, b[i * logn]); //SRANKA
@@ -155,15 +153,8 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 
     MPI_Allreduce(srankA, endpointsA, partition, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
     MPI_Allreduce(srankB, endpointsB, partition, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
-    //MPI_Allreduce(localWIN, WIN, size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);   
 
-    //MPI_AllReduce(void* send_data, void* recv_data, int count, MPI_Datatype datatype, MPI_Op op, MPI_Comm communicator)
 
-    //cout << my_rank << " Reduce complete." << endl;	
-
-    //this in the 64 example should be 0,6,12,18,24...
-    //Gupta says to use smaller example, change base case to reflect this, debug 
-    //one off?
 	for (int i = 0; i < partition; i++) {
 
         //need a test to see if 0 would already be included or maybe a clause in smerge to remove one of the 0 if there are multiple
@@ -173,15 +164,6 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
     //cout << my_rank << " endpoint calculation" << endl; 
  
 
-    /* I am not sure about the first 6 endpoints (0-5) but locally as seen in the for loops below, the other numbers should
-       be 0,6,12,18,24,30 but due to allReduce its becoming something so much bigger and im not sure why
-    */
-
-    // I could be wrong but I dont think this is neccesarry
-    // endpointsA[partition] = size/2;
-    // endpointsB[partition ] = size/2; 
-
-    //cout << "This is a partition: " << partition << endl;
 
     //test the endpoints
     if(my_rank == 0) {
@@ -200,19 +182,19 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         printArray(shapes, shapearraySize);
     }
 
-    smerge(&shapes[0], &shapes[partition*2], (partition*2)-1, shapearraySize, &finalShapes[0]);
+    smerge(&shapes[0], &shapes[partition*2], (partition*2)-1, shapearraySize-1, &WIN[0]);
 
-	MPI_Allreduce(finalShapes, output, shapearraySize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(WIN, output, shapearraySize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
 	
 	if(my_rank == 0) {
 		cout << "Output pmerge array after all reduce: ";
-		printArray(finalShapes, shapearraySize);
+		printArray(WIN, shapearraySize);
 		cout << endl;
 	}
 	
 	//Deleting dynamically allocated arrays	
-	delete [] finalShapes;
+	delete [] WIN;
 	delete [] shapes;
     delete [] endpointsA;
     delete [] endpointsB;

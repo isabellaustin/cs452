@@ -184,6 +184,13 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 
     smerge(&shapes[0], &shapes[partition*2], (partition*2)-1, shapearraySize-1, &WIN[0]);
 
+    /*for(int = my_rank; i < shapearraySize; i+=p)
+    {
+        //cant tell of this should be partition or logn
+        //how to generalize where things will end
+        smerge(&shapes[i], &shapes[i * (partition * 2)], (partition * 2) - 1, shapearraySize -1, &WIN[0])
+    }*/
+
 	MPI_Allreduce(WIN, output, shapearraySize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
 	

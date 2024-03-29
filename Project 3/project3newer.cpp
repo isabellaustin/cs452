@@ -75,7 +75,7 @@ int Rank(int *a, int first, int last, int valToFind) {
         {
             return 1;
         }
-    }   
+    }  
 
     int middle = (first + last) / 2;
 
@@ -133,8 +133,8 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
     int * finalendpointsA = new int[totarraySize];
     int * finalendpointsB = new int[totarraySize];
     int * localWIN = new int[totarraySize];
-	int * srankA = new int[(partition)];
-	int * srankB = new int[(partition)];
+	int * srankA = new int[(partition+1)];
+	int * srankB = new int[(partition+1)];
 	
 	for(int i = 0; i < partition; i++)
 	{   
@@ -153,21 +153,25 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         srankB[i] = Rank(a, 0, lasta, b[i * logn]); //SRANKA
     }
 
-
     MPI_Allreduce(srankA, endpointsA, partition, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
     MPI_Allreduce(srankB, endpointsB, partition, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
+
+    endpointsA[partition] = Rank(b, 0, totarraySize/2, a[totarraySize/2]);
+    endpointsB[partition] = Rank(a, 0, totarraySize/2, b[totarraySize/2]);
 
 
 	for (int i = 0; i < partition; i++) {
 
         //need a test to see if 0 would already be included or maybe a clause in smerge to remove one of the 0 if there are multiple
-        endpointsA[i + partition] = i * logn;
-        endpointsB[i + partition] = i * logn;
+        endpointsA[i + partition + 1] = i * logn;
+        endpointsB[i + partition + 1] = i * logn;
     }
     //add the end of the array as a point here!
 
     endpointsA[(partition * 2)] = totarraySize/2;
     endpointsB[(partition * 2)] = totarraySize/2;
+
+
 
     //cout << my_rank << " endpoint calculation" << endl; 
     //test the endpoints
@@ -179,8 +183,8 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         cout << endl;
     }
 
-    smerge(&endpointsA[0], &endpointsA[partition], partition -1, (partition * 2), finalendpointsA);
-    smerge(&endpointsB[0], &endpointsB[partition], partition -1, (partition * 2), finalendpointsB);
+    smerge(&endpointsA[0], &endpointsA[partition+1], partition, (partition * 2), finalendpointsA);
+    smerge(&endpointsB[0], &endpointsB[partition+1], partition, (partition * 2), finalendpointsB);
 
 
     if(my_rank == 0) {
@@ -197,9 +201,9 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
     int totalDistance = 0;
 
     //finalendpointsA[finaleendpoints[i]]
-    if(my_rank == 0);
+    if(my_rank == 0)
     {
-        for(int i = 0; i < totarraySize; i++ )
+        for(int i = 0; i < (partition * 2) + 1; i++ )
         {
             distanceA = finalendpointsA[i+1] - finalendpointsA[i];
             cout << "distanceA: " << distanceA << ": " << finalendpointsA[i+1] << ":" << finalendpointsA[i] << endl;

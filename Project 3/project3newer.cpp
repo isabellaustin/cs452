@@ -40,11 +40,10 @@ void smergesort(int *a, int first, int last, int *output = NULL) {
 }
 
 void pmergesort(int *a, int first, int last, int *output = NULL) {
-    if (last - first <= 8 )
+    if (last - first <= 32 )
     {
         return;
     }
-
     else if(last - first < 1)
     {
         return;
@@ -174,6 +173,26 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         cout << endl;
     }
 
+    int distanceA = 0;
+    int distanceB = 0;
+
+    //QUESTION.
+    //is this even generally a corrrect idea?
+    for (int i = 0; i < something; i+= p)
+    {
+        distanceA = endpointsA[i+1] - endpointsA[i];
+        distanceB = endpointsB[i+1] - endpointsB[i];
+        smerge(&endpointsA[i], &endpointsA[distanceA], i, distanceA, &shapes[0]);
+        smerge(&endpointsB[i], &endpointsB[distanceB], i, distanceB, &shapes[partition*2]); 
+    }
+
+    //smerge(&endpointsA[0], &endpointsA[partition], partition-1, (partition * 2) - 1, &shapes[0]);
+    //smerge(&endpointsB[0], &endpointsB[partition], partition-1, (partition * 2) - 1, &shapes[partition*2]); 
+
+    //striping here get the sizes of the first 2, calculates distance, than determines the smerge stuff
+    //based on that information, instead of basing this on permission
+    //Gupta doesnt like partition. I think shapearraySize is also bad. 
+    //shapes require 4 points to work with
     smerge(&endpointsA[0], &endpointsA[partition], partition-1, (partition * 2) - 1, &shapes[0]);
     smerge(&endpointsB[0], &endpointsB[partition], partition-1, (partition * 2) - 1, &shapes[partition*2]); 
 

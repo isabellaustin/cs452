@@ -128,9 +128,11 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 	
 	//THIS IS WHERE ENDPOINT STUFF IS HAPPENING
 	int * WIN = new int[totarraySize];
-	int * shapes = new int[totarraySize]; 
-	int * endpointsA = new int[(partition * 2)];
-    int * endpointsB = new int[(partition * 2)];
+	int * endpointsA = new int[(partition * 2) + 1];
+    int * endpointsB = new int[(partition * 2) + 1];
+    int * finalendpointsA = new int[totarraySize];
+    int * finalendpointsB = new int[totarraySize];
+    int * localWIN = new int[totarraySize];
 	int * srankA = new int[(partition)];
 	int * srankB = new int[(partition)];
 	
@@ -140,7 +142,9 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         srankB[i] = 0;
 		endpointsA[i] = 0;
 		endpointsB[i] = 0;
-        shapes[i] = 0;
+        finalendpointsA[i] = 0;
+        finalendpointsB[i] = 0;
+        localWIN[i] = 0;
         WIN[i] = 0;
 	}
     
@@ -160,31 +164,83 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         endpointsA[i + partition] = i * logn;
         endpointsB[i + partition] = i * logn;
     }
+    //add the end of the array as a point here!
+
+    endpointsA[(partition * 2)] = totarraySize/2;
+    endpointsB[(partition * 2)] = totarraySize/2;
+
     //cout << my_rank << " endpoint calculation" << endl; 
- 
-
-
     //test the endpoints
     if(my_rank == 0) {
         cout << "endpointsA: ";
-        printArray(endpointsA, partition*2);
+        printArray(endpointsA, (partition * 2) + 1);
         cout << "endpointsB: ";
-        printArray(endpointsB, partition*2);
+        printArray(endpointsB, (partition * 2) + 1);
         cout << endl;
     }
 
+    smerge(&endpointsA[0], &endpointsA[partition], partition -1, (partition * 2), finalendpointsA);
+    smerge(&endpointsB[0], &endpointsB[partition], partition -1, (partition * 2), finalendpointsB);
+
+
+    if(my_rank == 0) {
+        cout << "sorted new endpointsA: ";
+        printArray(finalendpointsA, (partition * 2) + 1);
+        cout << "sorted new endpointsB: ";
+        printArray(finalendpointsB, (partition * 2) + 1);
+        cout << endl;
+    }
+
+
     int distanceA = 0;
     int distanceB = 0;
+    int totalDistance = 0;
+
+    //finalendpointsA[finaleendpoints[i]]
+    if(my_rank == 0);
+    {
+        for(int i = 0; i < totarraySize; i++ )
+        {
+            distanceA = finalendpointsA[i+1] - finalendpointsA[i];
+            cout << "distanceA: " << distanceA << ": " << finalendpointsA[i+1] << ":" << finalendpointsA[i] << endl;
+            distanceB = finalendpointsB[i+1] - finalendpointsB[i];
+            cout << "distanceB: " << distanceB << ": " << finalendpointsB[i+1] << ":" << finalendpointsB[i] << endl;
+            smerge(&a[finalendpointsB[i]], &b[finalendpointsA[i]], distanceB-1, distanceA-1, &localWIN[totalDistance]);
+            totalDistance = totalDistance + distanceA + distanceB;
+            cout << totalDistance << endl;
+            cout<< "New values added to array" << endl;
+            printArray(localWIN, totalDistance); 
+        }
+    }
+
+
+    /*for (int i = 0; i < (partition * 2) + 1; i+= p)
+    {   // "stripe the endpoints across and have everyone smerge across"
+        int endA1 = finalendpointsA[i];
+        int endA2 = finalendpointsA[i+1];
+        int endB1 = finalendpointsB[i];
+        int endB2 = finalendpointsB[i+1];
+        
+        distanceA = endA2 - endA1;
+        distanceB = endB2 - endB1;
+        smerge(&a[finalendpointsA[i]], &finalendpointsA[distanceA], i, distanceA, &shapes[i]); //totalendpoints A and B; first 2 from A from B
+        smerge(&a[finalendpointsB[i]], &finalendpointsB[distanceB], i, distanceB, &shapes[i+2]); //"Not at localWIN[0], localWIN[i], or localWIN[distance]"
+    }
+
+    if(my_rank == 0) {
+        cout << "sorted new endpointsA: ";
+        printArray(shapes, (partition * 2) + 1);
+    }*/
 
     //QUESTION.
     //is this even generally a corrrect idea?
-    for (int i = 0; i < something; i+= p)
+    /*for (int i = 0; i < something; i+= p)
     {
         distanceA = endpointsA[i+1] - endpointsA[i];
         distanceB = endpointsB[i+1] - endpointsB[i];
         smerge(&endpointsA[i], &endpointsA[distanceA], i, distanceA, &shapes[0]);
         smerge(&endpointsB[i], &endpointsB[distanceB], i, distanceB, &shapes[partition*2]); 
-    }
+    }*/
 
     //smerge(&endpointsA[0], &endpointsA[partition], partition-1, (partition * 2) - 1, &shapes[0]);
     //smerge(&endpointsB[0], &endpointsB[partition], partition-1, (partition * 2) - 1, &shapes[partition*2]); 
@@ -192,11 +248,12 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
     //striping here get the sizes of the first 2, calculates distance, than determines the smerge stuff
     //based on that information, instead of basing this on permission
     //Gupta doesnt like partition. I think shapearraySize is also bad. 
+    // Kill the shapes array, because it is clearly dumb.
     //shapes require 4 points to work with
-    smerge(&endpointsA[0], &endpointsA[partition], partition-1, (partition * 2) - 1, &shapes[0]);
-    smerge(&endpointsB[0], &endpointsB[partition], partition-1, (partition * 2) - 1, &shapes[partition*2]); 
+    //smerge(&endpointsA[0], &endpointsA[partition], partition-1, (partition * 2) - 1, &shapes[0]);
+    //smerge(&endpointsB[0], &endpointsB[partition], partition-1, (partition * 2) - 1, &shapes[partition*2]); 
 
-    if(my_rank == 0) {
+    /*if(my_rank == 0) {
         cout << "sorted endpoints aka shapes: ";
         printArray(shapes, shapearraySize);
     }
@@ -212,22 +269,24 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         smerge(&shapes[i], &shapes[i + (partition * 2)], logn, i + (partition * 2) + logn, &WIN[0]);
     }*/
 
-	MPI_Allreduce(WIN, output, shapearraySize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+	/*MPI_Allreduce(WIN, output, shapearraySize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
 	
 	if(my_rank == 0) {
 		cout << "Output pmerge array after all reduce: ";
 		printArray(WIN, shapearraySize);
 		cout << endl;
-	}
+	}*/
 	
 	//Deleting dynamically allocated arrays	
 	delete [] WIN;
-	delete [] shapes;
     delete [] endpointsA;
     delete [] endpointsB;
     delete [] srankA;
     delete [] srankB;
+    delete [] finalendpointsA;
+    delete [] finalendpointsB;
+    delete [] localWIN;
 }
 
 void printArray(int *a, int size) {

@@ -1,3 +1,9 @@
+//CS452 Project 3: Clone Wars
+//Written by Anna Vadella, Noah Baker, Izzy Austin
+
+
+//add the 
+
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -112,31 +118,35 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 
 	//we need to have base case if size is 1 or 0 or the log or partition is 0	
     //partition should be 11 for 64
-	int local_start = my_rank; 
-    int totarraySize = lasta+lastb+1;
-    cout << "Size: " << totarraySize << endl;
-    int logn = ceil(log2(totarraySize/2)); //log n for index of entire array
-    cout << "Log of size: " << logn << endl;
-    int partition = ceil((double)(totarraySize/2)/(logn)); //n over log n for the size of arrays
 
+
+    //Recalculate for one indexing 
+	int local_start = my_rank; 
+    int totarraySize = lasta + lastb + 1;
+    //cout << "Size: " << totarraySize << endl;
+    int logn = ceil(log2(totarraySize/2)); //log n for index of entire array
+    //cout << "Log of size: " << logn << endl;
+    int partition = ceil((double)(totarraySize/2)/(logn)); //n over log n for the size of arrays
     int shapearraySize = (partition * 2) * 2;
-	cout << "Partition: " << partition << endl;
+	//cout << "Partition: " << partition << endl;
 
     //cout << "LastA/B:   " <<  lasta << "/" << lastb << endl;
 
 	//Phase 3: Make sure the answers from phase 2 are correct, test throughly!*/
 	
-	//THIS IS WHERE ENDPOINT STUFF IS HAPPENING
+	//Make the size of srank partition * 2 so you dont have to do extra shit 
 	int * WIN = new int[totarraySize];
-	int * endpointsA = new int[(partition * 2) + 1];
-    int * endpointsB = new int[(partition * 2) + 1];
+	int * endpointsA = new int[(partition * 2)+ 2];
+    int * endpointsB = new int[(partition * 2)+ 2];
     int * finalendpointsA = new int[totarraySize];
     int * finalendpointsB = new int[totarraySize];
     int * localWIN = new int[totarraySize];
-	int * srankA = new int[(partition+1)];
-	int * srankB = new int[(partition+1)];
-	
-	for(int i = 0; i < partition; i++)
+	int * srankA = new int[(partition * 2)+ 2];
+	int * srankB = new int[(partition * 2)+ 2];
+
+
+    //I think some of these are not correct so double check
+	for(int i = 0; i <= (partition * 2)+ 2 ; i++)
 	{   
         srankA[i] = 0;
         srankB[i] = 0;
@@ -144,143 +154,112 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 		endpointsB[i] = 0;
         finalendpointsA[i] = 0;
         finalendpointsB[i] = 0;
-        localWIN[i] = 0;
-        WIN[i] = 0;
 	}
+	
+	for(int i = 0; i < totarraySize; i++)
+	{
+		localWIN[i] = 0;
+        WIN[i] = 0;
+	} 
+
+    //add all of the logn values, not rank just yet
+    for (int i = 0; i < partition; i++) {
+        srankA[i] = i * logn;
+        srankB[i] = i * logn;
+    }
+    srankA[partition] = totarraySize/2;
+    srankB[partition] = totarraySize/2;
     
     for (int i = my_rank; i < partition; i += p) {
-        srankA[i] = Rank(b, 0, lastb, a[i * logn]); //SRANKB
-        srankB[i] = Rank(a, 0, lasta, b[i * logn]); //SRANKA
+        srankA[i + (partition + 1)] = Rank(b, 0, lastb, a[i * logn]); //SRANKB
+        srankB[i + (partition + 1)] = Rank(a, 0, lasta, b[i * logn]); //SRANKA
     }
-
-    MPI_Allreduce(srankA, endpointsA, partition, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
-    MPI_Allreduce(srankB, endpointsB, partition, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
-
-    endpointsA[partition] = Rank(b, 0, totarraySize/2, a[totarraySize/2]);
-    endpointsB[partition] = Rank(a, 0, totarraySize/2, b[totarraySize/2]);
+    srankA[(partition * 2) + 1] = Rank(b, 0, totarraySize/2, a[totarraySize/2]);
+    srankB[(partition * 2) + 1] = Rank(a, 0, totarraySize/2, b[totarraySize/2]);
 
 
-	for (int i = 0; i < partition; i++) {
-
-        //need a test to see if 0 would already be included or maybe a clause in smerge to remove one of the 0 if there are multiple
-        endpointsA[i + partition + 1] = i * logn;
-        endpointsB[i + partition + 1] = i * logn;
-    }
-    //add the end of the array as a point here!
-
-    endpointsA[(partition * 2)] = totarraySize/2;
-    endpointsB[(partition * 2)] = totarraySize/2;
-
-
+    MPI_Allreduce(srankA, endpointsA, (partition * 2) + 2, MPI_INT, MPI_MAX, MPI_COMM_WORLD); 
+    MPI_Allreduce(srankB, endpointsB, (partition * 2) + 2, MPI_INT, MPI_MAX, MPI_COMM_WORLD); 
+	//MPI_MAX is a "slightly more accurate way to define what we are trying to do"
 
     //cout << my_rank << " endpoint calculation" << endl; 
     //test the endpoints
     if(my_rank == 0) {
         cout << "endpointsA: ";
-        printArray(endpointsA, (partition * 2) + 1);
+        printArray(endpointsA, (partition * 2) + 2);
         cout << "endpointsB: ";
-        printArray(endpointsB, (partition * 2) + 1);
+        printArray(endpointsB, (partition * 2) + 2);
         cout << endl;
     }
 
-    smerge(&endpointsA[0], &endpointsA[partition+1], partition, (partition * 2), finalendpointsA);
-    smerge(&endpointsB[0], &endpointsB[partition+1], partition, (partition * 2), finalendpointsB);
-
+    smerge(&endpointsA[0], &endpointsA[partition+1], partition, partition, finalendpointsA);
+    smerge(&endpointsB[0], &endpointsB[partition+1], partition, partition, finalendpointsB);
 
     if(my_rank == 0) {
         cout << "sorted new endpointsA: ";
-        printArray(finalendpointsA, (partition * 2) + 1);
+        printArray(finalendpointsA, (partition * 2) + 2);
         cout << "sorted new endpointsB: ";
-        printArray(finalendpointsB, (partition * 2) + 1);
+        printArray(finalendpointsB, (partition * 2) + 2);
         cout << endl;
     }
-
 
     int distanceA = 0;
     int distanceB = 0;
     int totalDistance = 0;
 
-    //finalendpointsA[finaleendpoints[i]]
-    if(my_rank == 0)
+    for(int i = my_rank; i < (partition * 2) + 2; i+=p)
     {
-        for(int i = 0; i < (partition * 2) + 1; i++ )
+        distanceA = finalendpointsA[i + 1] - finalendpointsA[i];
+        cout << "distanceA: " << distanceA << ": " << finalendpointsA[i + 1] << ":" << finalendpointsA[i] << endl;
+        distanceB = finalendpointsB[i + 1] - finalendpointsB[i];
+        cout << "distanceB: " << distanceB << ": " << finalendpointsB[i + 1] << ":" << finalendpointsB[i] << endl;
+		
+
+        //in order to make sure that every sorted number is in the right spot for MPI_Reduce to combine everything together into a sorted array
+        //should we make changed to smerge so that i, j, and k are parameters, and everything falls into the right spot
+        //can we make a special shape smerge that does this, or am i over complicating things.
+        smerge(&a[finalendpointsA[i]], &b[finalendpointsB[i]], distanceB, distanceA, &localWIN[totalDistance]);
+
+        //this is some dumb stuff because zero indexing is the worst this will change
+        if(distanceA == 0 && distanceB == 0)
         {
-            distanceA = finalendpointsA[i+1] - finalendpointsA[i];
-            cout << "distanceA: " << distanceA << ": " << finalendpointsA[i+1] << ":" << finalendpointsA[i] << endl;
-            distanceB = finalendpointsB[i+1] - finalendpointsB[i];
-            cout << "distanceB: " << distanceB << ": " << finalendpointsB[i+1] << ":" << finalendpointsB[i] << endl;
-            smerge(&a[finalendpointsB[i]], &b[finalendpointsA[i]], distanceB-1, distanceA-1, &localWIN[totalDistance]);
-            totalDistance = totalDistance + distanceA + distanceB;
-            cout << totalDistance << endl;
-            cout<< "New values added to array" << endl;
-            printArray(localWIN, totalDistance); 
+            totalDistance += 2;
         }
+
+        totalDistance = totalDistance + distanceA + distanceB;
+        cout <<  "total distance: " << totalDistance << endl;
+        cout<< "New values added to array" << endl;
+        printArray(localWIN, totarraySize-totalDistance); 
     }
 
-
-    /*for (int i = 0; i < (partition * 2) + 1; i+= p)
-    {   // "stripe the endpoints across and have everyone smerge across"
-        int endA1 = finalendpointsA[i];
-        int endA2 = finalendpointsA[i+1];
-        int endB1 = finalendpointsB[i];
-        int endB2 = finalendpointsB[i+1];
-        
-        distanceA = endA2 - endA1;
-        distanceB = endB2 - endB1;
-        smerge(&a[finalendpointsA[i]], &finalendpointsA[distanceA], i, distanceA, &shapes[i]); //totalendpoints A and B; first 2 from A from B
-        smerge(&a[finalendpointsB[i]], &finalendpointsB[distanceB], i, distanceB, &shapes[i+2]); //"Not at localWIN[0], localWIN[i], or localWIN[distance]"
-    }
-
-    if(my_rank == 0) {
-        cout << "sorted new endpointsA: ";
-        printArray(shapes, (partition * 2) + 1);
-    }*/
-
-    //QUESTION.
-    //is this even generally a corrrect idea?
-    /*for (int i = 0; i < something; i+= p)
+	/*for(int i = my_rank; i < (partition * 2); i+= p)
     {
-        distanceA = endpointsA[i+1] - endpointsA[i];
-        distanceB = endpointsB[i+1] - endpointsB[i];
-        smerge(&endpointsA[i], &endpointsA[distanceA], i, distanceA, &shapes[0]);
-        smerge(&endpointsB[i], &endpointsB[distanceB], i, distanceB, &shapes[partition*2]); 
+		cout << "my rank: " << my_rank << endl;
+		
+		distanceA = finalendpointsA[i + 1] - finalendpointsA[i];
+        cout << "distanceA: " << distanceA << ": " << finalendpointsA[i + 1] << ":" << finalendpointsA[i] << endl;
+        distanceB = finalendpointsB[i + 1] - finalendpointsB[i];
+        cout << "distanceB: " << distanceB << ": " << finalendpointsB[i + 1] << ":" << finalendpointsB[i] << endl;
+		
+        smerge(&a[finalendpointsA[i]], &b[finalendpointsB[i]], distanceB, distanceA, &localWIN[totalDistance]);
+        totalDistance = totalDistance + distanceA + distanceB;
+        cout << totalDistance << endl;
+        cout<< "New values added to array" << endl;
+        printArray(localWIN, totalDistance); 
+		
+		//Might be in wrong spot for local win, off by one when creating shapes 
+		//Gupta says just change it back to striping and trace it as a stripe
+		//Print out the local endpoint error for each processor
     }*/
 
-    //smerge(&endpointsA[0], &endpointsA[partition], partition-1, (partition * 2) - 1, &shapes[0]);
-    //smerge(&endpointsB[0], &endpointsB[partition], partition-1, (partition * 2) - 1, &shapes[partition*2]); 
+	  
+	MPI_Allreduce(localWIN, WIN, totarraySize, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-    //striping here get the sizes of the first 2, calculates distance, than determines the smerge stuff
-    //based on that information, instead of basing this on permission
-    //Gupta doesnt like partition. I think shapearraySize is also bad. 
-    // Kill the shapes array, because it is clearly dumb.
-    //shapes require 4 points to work with
-    //smerge(&endpointsA[0], &endpointsA[partition], partition-1, (partition * 2) - 1, &shapes[0]);
-    //smerge(&endpointsB[0], &endpointsB[partition], partition-1, (partition * 2) - 1, &shapes[partition*2]); 
-
-    /*if(my_rank == 0) {
-        cout << "sorted endpoints aka shapes: ";
-        printArray(shapes, shapearraySize);
-    }
-
-    //this is the smerge where every processor does it and it works but we obvi want this to have striping
-    smerge(&shapes[0], &shapes[partition*2], (partition*2)-1, shapearraySize-1, &WIN[0]);
-
-    //this is like the most rough draft of striping smerging so dont laugh but this is an idea
-    /*for(int i = my_rank; i < shapearraySize; i+=p) //4 processors
-    {
-        //cant tell of this should be partition or logn
-        //how to generalize where things will end
-        smerge(&shapes[i], &shapes[i + (partition * 2)], logn, i + (partition * 2) + logn, &WIN[0]);
-    }*/
-
-	/*MPI_Allreduce(WIN, output, shapearraySize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-
-	
 	if(my_rank == 0) {
 		cout << "Output pmerge array after all reduce: ";
-		printArray(WIN, shapearraySize);
+		printArray(WIN, totarraySize);
 		cout << endl;
-	}*/
+	}
 	
 	//Deleting dynamically allocated arrays	
 	delete [] WIN;
@@ -356,10 +335,7 @@ int main(int argc, char *argv[]) {
 		    cout << userArray[i] << " "; 
 	    }
 	    cout << endl;
-
-
     }
-
 
     MPI_Bcast(userArray, arraySize, MPI_INT, 0, MPI_COMM_WORLD);
     pmergesort(userArray, 0, arraySize - 1, outputArray);
@@ -376,3 +352,11 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
+    //striping here get the sizes of the first 2, calculates distance, than determines the smerge stuff
+    //based on that information, instead of basing this on permission
+    //Gupta doesnt like partition. I think shapearraySize is also bad. 
+    // Kill the shapes array, because it is clearly dumb.
+    //shapes require 4 points to work with
+    //smerge(&endpointsA[0], &endpointsA[partition], partition-1, (partition * 2) - 1, &shapes[0]);
+    //smerge(&endpointsB[0], &endpointsB[partition], partition-1, (partition * 2) - 1, &shapes[partition*2]); 

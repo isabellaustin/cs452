@@ -83,7 +83,6 @@ int Rank(int *a, int first, int last, int valToFind) {
         return Rank(a, first, middle, valToFind);
     }
     else{
-        //used to be 0 and middle instead of middle and last
         return Rank(a, middle+1, last, valToFind);
     }
 }
@@ -142,7 +141,6 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
         WIN[i] = 0;
 	} 
 
-    //add all of the logn values, not rank just yet
     for (int i = 0; i < numRank; i++) {
         srankA[i] = i * logn;
         srankB[i] = i * logn;
@@ -184,11 +182,11 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
     int distanceB = 0;
     int totaldistance = 0;
     
-    for (int i = my_rank; i < (numRank * 2); i += p) {
+    for (int i = my_rank; i < (numRank * 2) + 1; i += p) {
         distanceB = finalendpointsA[i + 1] - finalendpointsA[i];
         distanceA = finalendpointsB[i + 1] - finalendpointsB[i];
         totaldistance = finalendpointsA[i] + finalendpointsB[i];
-        smerge(&a[finalendpointsB[i]], &b[finalendpointsA[i]], distanceA, distanceB, &localWIN[totaldistance]);     
+        smerge(&a[finalendpointsB[i]], &b[finalendpointsA[i]], distanceA, distanceB, &localWIN[totaldistance]);    
     }
 
     /*if(my_rank == 0)
@@ -218,17 +216,17 @@ void pmerge(int *a, int *b, int lasta, int lastb, int *output = NULL) {
 	  
 	MPI_Allreduce(&localWIN[0], &WIN[0], totarraySize, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-    if(my_rank == 0)
+    /*if(my_rank == 0)
     {
         distanceB = finalendpointsA[(numRank * 2) + 1] - finalendpointsA[(numRank * 2)];
         distanceA = finalendpointsB[(numRank * 2) + 1] - finalendpointsB[(numRank * 2)];
         totaldistance = finalendpointsA[(numRank * 2) + 1] + finalendpointsB[(numRank * 2) + 1];
         smerge(&a[finalendpointsB[(numRank * 2) + 1]], &b[finalendpointsA[(numRank * 2) + 1]], distanceA, distanceB, &WIN[totaldistance]);
-    }
+    }*/
 
 	if(my_rank == 0) {
 		cout << "Output pmerge array after all reduce: ";
-		printArray(WIN, totarraySize+1);
+		printArray(WIN, totarraySize);
 		cout << endl;
 	}
 	
@@ -282,7 +280,7 @@ int main(int argc, char *argv[]) {
     int * outputArray = new int[arraySize];
 
     if (my_rank == 0) {
-        srand(1121);
+        srand(time(0));
         for (int i = 0; i < arraySize; i++) {
             int arrayEntry =  1 + (rand() % 500); //had a plus 1
             while (!isUnique(userArray, i, arrayEntry))
@@ -310,11 +308,6 @@ int main(int argc, char *argv[]) {
 
     MPI_Bcast(userArray, arraySize, MPI_INT, 0, MPI_COMM_WORLD);
     pmergesort(userArray, 0, arraySize - 1, outputArray);
-
-    if (my_rank == 0) {
-        cout << "Sorted Array:" << endl;
-        printArray(userArray, arraySize);
-    }
 
     delete[] userArray;
     delete[] outputArray;

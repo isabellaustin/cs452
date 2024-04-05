@@ -70,17 +70,18 @@ void smerge(int * a, int firsta, int lasta, int * b, int firstb, int lastb, int 
 void pmerge(int * a, int * b, int lasta, int lastb, int * output = NULL) {
 
 	int totalArraySize = lasta + lastb + 1;
-    int logn = log2(totalArraySize/2); 
-    int partition = ceil((double)(totalArraySize/2)/logn);				
+    int logn = log2(totalArraySize/2); //Value for indexing through arrays so we only calculate specific ranks
+    int partition = ceil((double)(totalArraySize/2)/logn); //size of the array for each rank/srank			
 
     int * localWIN = new int[totalArraySize];
-    int * localendpointsA = new int[partition * 2 + 1];
+    int * localendpointsA = new int[partition * 2 + 1]; 
     int * localendpointsB = new int[partition * 2 + 1];
 
     int * WIN = new int[totalArraySize];
     int * endpointsA = new int [partition * 2 + 1];
     int * endpointsB = new int [partition * 2 + 1];
 	
+	//Making all zero so MPI_allreduce works woth MPI_MAX
 	for(int i = 0; i < partition * 2 + 1; i++) {   
 		endpointsA[i] = 0;
 		endpointsB[i] = 0;
@@ -103,10 +104,11 @@ void pmerge(int * a, int * b, int lasta, int lastb, int * output = NULL) {
         localendpointsB[i + partition] = i * logn;
     }
 
-	MPI_Allreduce(localendpointsA, endpointsA, partition * 2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);    
+	MPI_Allreduce(localendpointsA, endpointsA, partition * 2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);  //Give every processor endpoints  
     MPI_Allreduce(localendpointsB, endpointsB, partition * 2, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
     MPI_Allreduce(localWIN, WIN, totalArraySize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 	
+	//Add the final endpoint which is just the last spot of the array
     endpointsA[partition * 2] = totalArraySize/2;
     endpointsB[partition * 2] = totalArraySize/2; 
 
@@ -115,6 +117,7 @@ void pmerge(int * a, int * b, int lasta, int lastb, int * output = NULL) {
     quickSort(endpointsB, 0, partition * 2 - 1);
 
     for(int i = my_rank; i < partition * 2; i+= p) //striping
+		//using shapes, smerge the final array so its sorted.
         smerge(a, endpointsA[i], endpointsA[i + 1] - 1, b, endpointsB[i], endpointsB[i + 1] - 1, endpointsA[i] + endpointsB[i], endpointsB[i + 1] + endpointsB[i + 1], localWIN);
 
     MPI_Allreduce(localWIN, WIN, totalArraySize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -123,6 +126,7 @@ void pmerge(int * a, int * b, int lasta, int lastb, int * output = NULL) {
         a[i] = WIN[i];
     }
 
+	//printing out final array
     if (my_rank == 0) {
         cout << "WIN: ";
         printArray(WIN, totalArraySize);
@@ -215,7 +219,7 @@ int main (int argc, char * argv[]) {
         srand(time(NULL));
         for (int i = 0; i < arraySize; i++) {
             int arrayEntry = 1 + (rand() % 500);
-            while (!isUnique(userArray, i, arrayEntry))
+            while (!isUnique(userArray, i, arrayEntry)) //isUnique also adds to the array
                 arrayEntry = 1 + (rand() % 500);
         }
     }
@@ -224,7 +228,7 @@ int main (int argc, char * argv[]) {
 		cout << "Unsorted Array: " << endl;
 		printArray(userArray, arraySize);
 	} 
-    MPI_Bcast(userArray, arraySize, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(userArray, arraySize, MPI_INT, 0, MPI_COMM_WORLD); //Broadcasts array to each processor
 
     mergesort(userArray, 0, arraySize);
 

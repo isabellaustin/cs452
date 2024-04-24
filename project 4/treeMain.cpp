@@ -13,7 +13,7 @@ int main()
 {
     srand(1251);
 
-    int rootValue = 1000;
+    int rootValue = 1989;
     int insLeaves [30]; //insert
     int delLeaves [30]; //delete
 
@@ -33,16 +33,16 @@ int main()
     tree.Print();
     
     //how many are we suppose to ins/del? random?
-    for(int i = 0; i < 15; i++) {
+    for(int i = 0; i < 30; i++) {
         cout << "Node inserted: " << insLeaves[i] << endl;
         tree.Insert(insLeaves[i]);
         cout << endl;
-        
+
         tree.Print();
         cout << endl;
     }
 
-    for(int i = 0; i < 10; i++) {
+    for(int i = 0; i < 30; i++) {
         cout << "Node deleted: " << insLeaves[i] << endl;
         tree.Delete(delLeaves[i]);
         cout << endl;

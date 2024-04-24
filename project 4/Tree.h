@@ -22,6 +22,7 @@ class Tree
 {
     private:
         Node * root;
+        Node * overloadNode;
 
         //Helper function for Insert - Absorb node a into node b
         void absorb(Node * a, Node * b) {
@@ -162,7 +163,7 @@ class Tree
         }
 
         Node * Search(Node *root, int valToFind) {
-            if (root->isLeaf())		//Base case for leaf, root has not children
+            if (root->isLeaf())		//Base case for leaf, root has no children
                 return root;
 
             if (root->getLeft()->getValue() >= valToFind) {		//Looking at leftmost element of node
@@ -173,6 +174,10 @@ class Tree
 			} 
             else
                 return Search(root->getRight(), valToFind);		//Recursively checking right
+
+            if(valToFind > root->getValue()) //???
+                Node * overloadNode = new Node(2000); // In the event that you’re searching for something that is larger than the largest thing in the current tree, return 2000.
+                return overloadNode;
         }
 
         void Insert(int valToAdd) {
